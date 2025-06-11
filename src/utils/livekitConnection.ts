@@ -1,35 +1,104 @@
 
-import { livekitConfig } from '@/config/livekit';
+import { Room, RoomEvent, Track, RemoteTrack, RemoteParticipant } from 'livekit-client';
+import { livekitConfig, generateTestToken } from '@/config/livekit';
 
-export const generateConnectionDetails = async (): Promise<any> => {
-  try {
-    // This would typically call your backend API to generate a token
-    // For now, this is a placeholder that you can replace with your actual backend call
-    const response = await fetch('/api/connection-details', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        livekitUrl: livekitConfig.LIVEKIT_URL,
-        apiKey: livekitConfig.LIVEKIT_API_KEY,
-        secretKey: livekitConfig.LIVEKIT_SECRET_KEY,
-      }),
+export class LiveKitConnection {
+  private room: Room | null = null;
+  private onTranscriptCallback?: (text: string, isUser: boolean) => void;
+
+  constructor() {
+    this.room = new Room();
+  }
+
+  async connect(roomName: string, participantName: string) {
+    if (!this.room) return null;
+
+    try {
+      console.log('Connecting to LiveKit room:', roomName);
+      
+      // Generate token (replace with your backend API call)
+      const token = generateTestToken(roomName, participantName);
+      
+      await this.room.connect(livekitConfig.LIVEKIT_URL, token);
+      
+      console.log('Connected to LiveKit room successfully');
+      
+      // Set up event listeners
+      this.setupEventListeners();
+      
+      // Enable camera and microphone
+      await this.enableAudioVideo();
+      
+      return this.room;
+    } catch (error) {
+      console.error('Failed to connect to LiveKit:', error);
+      throw error;
+    }
+  }
+
+  private setupEventListeners() {
+    if (!this.room) return;
+
+    this.room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication, participant: RemoteParticipant) => {
+      console.log('Track subscribed:', track.kind);
+      if (track.kind === Track.Kind.Audio) {
+        const audioElement = track.attach();
+        document.body.appendChild(audioElement);
+      }
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to get connection details');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error connecting to LiveKit:', error);
-    // Fallback mock data for testing
-    return {
-      serverUrl: livekitConfig.LIVEKIT_URL,
-      participantToken: 'mock-token-' + Math.random().toString(36).substr(2, 9),
-      participantName: 'User-' + Math.random().toString(36).substr(2, 5),
-      roomName: 'room-' + Math.random().toString(36).substr(2, 8),
-    };
+    this.room.on(RoomEvent.DataReceived, (payload: Uint8Array, participant, kind) => {
+      const message = new TextDecoder().decode(payload);
+      console.log('Received message:', message);
+      
+      // Parse the message and call transcript callback
+      try {
+        const data = JSON.parse(message);
+        if (data.type === 'transcript' && this.onTranscriptCallback) {
+          this.onTranscriptCallback(data.text, data.isUser || false);
+        }
+      } catch (e) {
+        console.error('Error parsing message:', e);
+      }
+    });
   }
-};
+
+  async enableAudioVideo() {
+    if (!this.room) return;
+
+    try {
+      // Enable microphone
+      await this.room.localParticipant.enableCameraAndMicrophone();
+      console.log('Camera and microphone enabled');
+    } catch (error) {
+      console.error('Error enabling camera/microphone:', error);
+    }
+  }
+
+  setOnTranscript(callback: (text: string, isUser: boolean) => void) {
+    this.onTranscriptCallback = callback;
+  }
+
+  async sendMessage(message: string) {
+    if (!this.room) return;
+
+    const data = JSON.stringify({
+      type: 'message',
+      text: message,
+      timestamp: Date.now()
+    });
+
+    await this.room.localParticipant.publishData(new TextEncoder().encode(data));
+  }
+
+  disconnect() {
+    if (this.room) {
+      this.room.disconnect();
+      this.room = null;
+    }
+  }
+
+  getRoom() {
+    return this.room;
+  }
+}
