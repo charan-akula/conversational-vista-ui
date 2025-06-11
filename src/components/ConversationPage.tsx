@@ -6,6 +6,12 @@ import VideoWindow from './VideoWindow';
 import ConversationTranscript from './ConversationTranscript';
 import ControlButtons from './ControlButtons';
 
+interface Message {
+  type: 'user' | 'bot';
+  text: string;
+  timestamp: Date;
+}
+
 interface ConversationPageProps {
   onEndConversation: () => void;
 }
@@ -13,8 +19,8 @@ interface ConversationPageProps {
 const ConversationPage = ({ onEndConversation }: ConversationPageProps) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [messages, setMessages] = useState([
-    { type: 'bot' as const, text: 'Hello! How can I help you today?', timestamp: new Date() }
+  const [messages, setMessages] = useState<Message[]>([
+    { type: 'bot', text: 'Hello! How can I help you today?', timestamp: new Date() }
   ]);
 
   const handleMuteToggle = () => {
@@ -31,13 +37,13 @@ const ConversationPage = ({ onEndConversation }: ConversationPageProps) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setMessages(prev => [...prev, 
-        { type: 'user' as const, text: 'How about the story involving a llama', timestamp: new Date() }
+        { type: 'user', text: 'How about the story involving a llama', timestamp: new Date() }
       ]);
     }, 2000);
 
     const timer2 = setTimeout(() => {
       setMessages(prev => [...prev, 
-        { type: 'bot' as const, text: 'Once upon a time, in a small village nestled in the Andes, there lived a quirky llama named Luis. Luis dreamed of becoming a famous mountain climber. One day, he decided to embark on a journey to the tallest peak.', timestamp: new Date() }
+        { type: 'bot', text: 'Once upon a time, in a small village nestled in the Andes, there lived a quirky llama named Luis. Luis dreamed of becoming a famous mountain climber. One day, he decided to embark on a journey to the tallest peak.', timestamp: new Date() }
       ]);
     }, 4000);
 
