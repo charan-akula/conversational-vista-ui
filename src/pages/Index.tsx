@@ -1,12 +1,26 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState } from 'react';
+import StartPage from '@/components/StartPage';
+import ConversationPage from '@/components/ConversationPage';
 
 const Index = () => {
+  const [currentPage, setCurrentPage] = useState<'start' | 'conversation'>('start');
+
+  const handleStartConversation = () => {
+    setCurrentPage('conversation');
+  };
+
+  const handleEndConversation = () => {
+    setCurrentPage('start');
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {currentPage === 'start' ? (
+        <StartPage onStartConversation={handleStartConversation} />
+      ) : (
+        <ConversationPage onEndConversation={handleEndConversation} />
+      )}
     </div>
   );
 };
